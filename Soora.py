@@ -8,6 +8,7 @@ import pyaudio
 import time
 import subprocess
 import psycopg2
+import glob
 
 from client import *
 from IPython.display import Audio
@@ -59,8 +60,12 @@ def transcribe_batch(audio_file):
         out_file.writelines(text)
     with open(r'woman.json', 'w', encoding='utf-8') as jsonf:
         jsonf.write(json.dumps(text, indent=4))
-    f = open(r'C:\Users\ASUS\Documents\deepspeech\mic_vad_streaming\output\Output_Deepspeech\woman.csv') #File path
-    cur.copy_from(f, "users", sep=",")
+    for fname in glob.glob('C:/Users/ASUS/Documents/deepspeech/mic_vad_streaming/output/Output_Deepspeech/*.csv'):
+        with open(fname) as f:
+            cur.copy_from(f, "users", sep=",")
+
+ #   f = open(r'C:\Users\ASUS\Documents\deepspeech\mic_vad_streaming\output\Output_Deepspeech\woman.csv') #File path
+ #   cur.copy_from(f, "users", sep=",")
     conn.commit()
     f.close()
     return text
