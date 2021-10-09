@@ -6,7 +6,10 @@ import os
 import wave
 import pyaudio
 import time
+import subprocess
+import psycopg2
 
+from client import *
 from IPython.display import Audio
 from IPython.display import clear_output
 
@@ -33,15 +36,39 @@ def read_wav_file(filename):
 
     return buffer, rate
 
+def metadata_json_output(metadata):
+    json_result = dict()
+    json_result["transcripts"] = [{
+        "confidence": transcript.confidence,
+        "words": transcribe_batch('woman.wav'),
+    } for transcript in metadata.transcripts]
+    return json.dumps(json_result, indent=2)
+
 def transcribe_batch(audio_file):
+    DB_host = 'localhost'
+    DB_name = 'uploadfile'
+    DB_user = 'postgres'
+    DB_password = '1234'    
+    conn = psycopg2.connect(host=DB_host, dbname=DB_name, user=DB_user, password=DB_password)
+    cur = conn.cursor()
     buffer, rate = read_wav_file(audio_file)
     data16 = np.frombuffer(buffer, dtype=np.int16)
     text = model.stt(data16)
     print(text)
+    with open('woman.csv', 'w') as out_file:
+        out_file.writelines(text)
+    with open(r'woman.json', 'w', encoding='utf-8') as jsonf:
+        jsonf.write(json.dumps(text, indent=4))
+    f = open(r'C:\Users\ASUS\Documents\deepspeech\mic_vad_streaming\output\Output_Deepspeech\woman.csv') #File path
+    cur.copy_from(f, "users", sep=",")
+    conn.commit()
+    f.close()
     return text
-
+  
 Audio('audio/woman1_wb.wav')   
 transcribe_batch('audio/woman1_wb.wav')
+#subprocess.run(['python','client.py','--model','deepspeech-0.9.3-models.pbmm','--audio','woman.wav','--json'])
+
 
 # Streaming API
 context = model.createStream()
@@ -58,7 +85,7 @@ def transcribe_streaming(audio_file):
         data16 = np.frombuffer(chunck, dtype=np.int16)
 
         Stream.feedAudioContent(data16)
-        text = Stream.intermediateDecodeWithMetadata()
+        text = Stream.intermediateDecode()
         #clear_output(wait=True)
         print(text)
         offset = end_offset
