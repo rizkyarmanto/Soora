@@ -9,8 +9,8 @@ import time
 import subprocess
 import psycopg2
 import glob
+import json
 
-from client import *
 from IPython.display import Audio
 from IPython.display import clear_output
 
@@ -37,41 +37,35 @@ def read_wav_file(filename):
 
     return buffer, rate
 
-def metadata_json_output(metadata):
-    json_result = dict()
-    json_result["transcripts"] = [{
-        "confidence": transcript.confidence,
-        "words": transcribe_batch('woman.wav'),
-    } for transcript in metadata.transcripts]
-    return json.dumps(json_result, indent=2)
-
 def transcribe_batch(audio_file):
     DB_host = 'localhost'
     DB_name = 'uploadfile'
     DB_user = 'postgres'
-    DB_password = '1234'    
-    conn = psycopg2.connect(host=DB_host, dbname=DB_name, user=DB_user, password=DB_password)
-    cur = conn.cursor()
+    DB_password = '1234'
+    save_file = 'C:/Users/ASUS/Documents/deepspeech/mic_vad_streaming/output/Output_Deepspeech'
+    file_name = 'woman.csv'
+    file_name_json = 'woman.json'
+    conne = psycopg2.connect(host=DB_host, dbname=DB_name, user=DB_user, password=DB_password)
+    cur = conne.cursor()
     buffer, rate = read_wav_file(audio_file)
     data16 = np.frombuffer(buffer, dtype=np.int16)
     text = model.stt(data16)
     print(text)
-    with open('woman.csv', 'w') as out_file:
+    upload_to = os.path.join(save_file,file_name)
+    upload_to_json = os.path.join(save_file, file_name_json)
+    with open(upload_to, 'w') as out_file:
         out_file.writelines(text)
-    with open(r'woman.json', 'w', encoding='utf-8') as jsonf:
+    with open(upload_to_json, 'w', encoding='utf-8') as jsonf:
         jsonf.write(json.dumps(text, indent=4))
     for fname in glob.glob('C:/Users/ASUS/Documents/deepspeech/mic_vad_streaming/output/Output_Deepspeech/*.csv'):
         with open(fname) as f:
             cur.copy_from(f, "users", sep=",")
-
- #   f = open(r'C:\Users\ASUS\Documents\deepspeech\mic_vad_streaming\output\Output_Deepspeech\woman.csv') #File path
- #   cur.copy_from(f, "users", sep=",")
-    conn.commit()
-    f.close()
+            conne.commit()
+            f.close()
     return text
   
-Audio('audio/woman1_wb.wav')   
-transcribe_batch('audio/woman1_wb.wav')
+Audio('Output_Deepspeech/woman.wav')   
+transcribe_batch('Output_Deepspeech/woman.wav')
 #subprocess.run(['python','client.py','--model','deepspeech-0.9.3-models.pbmm','--audio','woman.wav','--json'])
 
 
